@@ -1,0 +1,45 @@
+version: "3.7"
+
+services:
+  client:
+    image: nginx:latest
+    container_name: client
+    restart: always
+    extra_hosts:
+      - "client.example.com:172.27.124.2"
+    volumes:
+      - ../build:/usr/share/nginx/html
+    networks:
+      rtsb-network:
+        ipv4_address: 172.27.124.3
+
+  gateway:
+    image: nginx:latest
+    container_name: gateway
+    restart: always
+    command: |
+      /bin/sh -c "\
+      apt-get install openssl && \
+      cd /cert  && \
+      openssl req -x509 -newkey rsa:2048 -keyout site.key -out site.crt -days 365 -nodes -subj /CN=example.com -config ssl-cert.cnf  && \
+      echo starting && \
+      exec nginx -g 'daemon off;'"
+    volumes:
+      - ./gateway.conf:/etc/nginx/nginx.conf
+      - ./ssl-cert.cnf:/cert/ssl-cert.cnf
+    extra_hosts:
+      - "client.example.com:172.27.124.2"
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on: ["client"]
+    networks:
+      rtsb-network:
+        ipv4_address: 172.27.124.2
+
+networks:
+  rtsb-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.27.124.0/24

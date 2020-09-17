@@ -1,0 +1,108 @@
+name: Bootstrapper CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Uses Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install yarn
+        run: npm install -g yarn@1.22.0
+
+      - name: Get yarn cache
+        id: yarn-cache
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/cache@v1
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run Type Validation
+        run: node node_modules/.bin/tsc --noEmit --resolveJsonModule
+
+      - name: Run Lint
+        run: yarn lint
+        env:
+          NODE_ENV: production
+
+      - name: Run Jest
+        run: yarn test --collectCoverage
+        env:
+          CI: true
+
+      - name: Build
+        run: yarn build
+        env:
+          NODE_ENV: production
+
+      - name: Add custom hosts
+        run: |
+          sudo echo "127.0.0.1 client.example.com" | sudo tee -a /etc/hosts
+      - name: Start Test Environemnt
+        run: docker-compose -f e2e/docker-compose.yml up -d
+      - name: Install Cypress
+        run: |
+          cd e2e
+          yarn install
+      - name: Setup and Run Cypress
+        uses: cypress-io/github-action@v2
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
+        with:
+          wait-on: "https://client.example.com/"
+          wait-on-timeout: 30
+          install: false
+          working-directory: e2e
+          browser: chrome
+          headless: true
+          videoCompression: 10
+      - name: Cypress Screenshots
+        uses: actions/upload-artifact@v1
+        # Upload Screenshots on failures
+        if: failure()
+        with:
+          name: Cypress Screenshots
+          path: e2e/cypress/screenshots
+      - name: Cypress Snapshots
+        uses: actions/upload-artifact@v1
+        # Upload Snapshots on failures
+        if: failure()
+        with:
+          name: Cypress Snapshots
+          path: e2e/cypress/snapshots
+      - name: Cypress Videos
+        uses: actions/upload-artifact@v1
+        # Upload videos on failures
+        if: failure()
+        with:
+          name: Cypress Videos
+          path: e2e/cypress/videos
+      - name: Cypress New Snapshots
+        uses: actions/upload-artifact@v1
+        # Upload Snapshots on failures
+        if: failure()
+        with:
+          name: Cypress New Snapshots
+          path: e2e/cypress/new-snapshots

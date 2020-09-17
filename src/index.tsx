@@ -1,14 +1,33 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
-import * as serviceWorker from './serviceWorker';
+import React from "react";
+import ReactDOM from "react-dom";
+import {
+  StylesProvider,
+  createGenerateClassName,
+  createMuiTheme,
+  ThemeProvider,
+} from "@material-ui/core/styles";
+import { App } from "./App";
+import * as serviceWorker from "./serviceWorker";
+import "./index.css";
+
+// Create your own theme
+const theme = createMuiTheme({});
+
+const generateClassName = createGenerateClassName({
+  productionPrefix: "a",
+  disableGlobal: process.env.NODE_ENV === "production",
+  seed: "",
+});
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <StylesProvider generateClassName={generateClassName}>
+      <ThemeProvider theme={theme}>
+        <App />
+      </ThemeProvider>
+    </StylesProvider>
   </React.StrictMode>,
-  document.getElementById('root')
+  document.getElementById("root")
 );
 
 // If you want your app to work offline and load faster, you can change
