@@ -3,7 +3,5 @@
     "config:base"
   ],
   "schedule": "before 5am on Monday",
-  "prCommitsPerRunLimit": 1,
-  "automerge": true,
-  "automergeType": "branch"
+  "prCommitsPerRunLimit": 1
 }
